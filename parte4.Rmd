@@ -1,0 +1,48 @@
+---
+title: "Parte 4"
+author: "Diego Ernesto"
+date: "Wednesday, November 05, 2014"
+output: html_document
+---
+
+***PS: não fiz uppload do banco de dados devido ao seu grande tamanho. Nesses scripts uso o track_metadata.db e o subset_artist_term.db**
+
+
+***Qual o ano de lançamento tem o maior sucesso atual nas radios?***
+
+Sabendo que o banco de dados mostra apenas o sucesso atual da faixa nas radios e o ano de lancamento da faixa, podemos fazer uma comparacao desses atributos no grafico abaixo:
+
+Podemos ver que o ano com o maior sucesso nas radios atuais (mediana) é o ano de 1965, embora (devido ao tamnho do ponto) possamos notar que poucas faixas lancadas nesse ano estão contidas na lista. O que pode indicar um grande sucesso especifico. 
+Podemos tambem observar que a quantidade de faixas e também de sucesso dos primeiros anos é bem inferior aos demais. O numero de faixas lancaças e o crescimento do sucesso-influencia nas radios atuais tem um crescimento linear ate meados dos anos 1970. A partir dos anos 80 temos um crescimento mais estavel do sucesso medio de cada um dos ano, mas continua o crescimento do numero de faixas lançadas (o que era de se esperar).
+
+
+```{r, echo=FALSE}
+library("RSQLite")
+library("ggplot2")
+library(plyr)
+drv = SQLite()
+con = dbConnect(drv, dbname="track_metadata.db")
+alltables = dbListTables(con)
+#Circulos
+tabela = dbGetQuery( con,'select artist_id, year, artist_hotttnesss from songs' )
+con2 = dbConnect(drv, dbname="subset_artist_term.db")
+tags = dbGetQuery( con2,'select * from artist_mbtag' )
+fullTable = merge(tabela,tags, by.x = "artist_id", by.y = "artist_id")
+
+mediana  = aggregate(artist_hotttnesss ~ year, data = fullTable, FUN = median)
+ContaAno = count(fullTable, "year")
+qplot(mediana$year,mediana$artist_hotttnesss, data=mediana,xlim= c(1926,2010), xlab= "Anos", ylab = "Sucesso",size=factor(mediana$year),size=factor(ContaAno$freq))+ geom_point()
+```
+
+***Qual o crescimento da duração das faixas ao longo dos anos? consegue existir alguma relação com o sucesso?***
+
+Dado o tamanho do banco de dados, tentei criar categorias de duraçoes com ranges que variariam em um minuto (2:00 ate 2:30, por exemplo). Cada uma dessas categorias seria representada por uma linha com uma cor distinta. No eixo x está o ano e no Y o sucesso da faixa.
+O problema foi eu nao consegui dividir em categorias de tempo, tornando o grafico impossivel de se entender ou de pelo menos enxergar alguma tendencia. 
+
+```{r, echo=FALSE}
+dur = duracao$duration
+ano = duracao$year
+hot = duracao$artist_hotttnesss
+certo = aggregate(dur ~ ano + hot, data = duracao, median)
+ggplot(data=certo, aes(x=ano , y=hot , group=dur, color=dur))+ xlim(1926, 2010) + ylim(0, 1)+geom_line()
+```
