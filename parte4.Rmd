@@ -31,18 +31,38 @@ fullTable = merge(tabela,tags, by.x = "artist_id", by.y = "artist_id")
 
 mediana  = aggregate(artist_hotttnesss ~ year, data = fullTable, FUN = median)
 ContaAno = count(fullTable, "year")
-qplot(mediana$year,mediana$artist_hotttnesss, data=mediana,xlim= c(1926,2010), xlab= "Anos", ylab = "Sucesso",size=factor(mediana$year),size=factor(ContaAno$freq))+ geom_point()
+ggplot(mediana, aes(year, artist_hotttnesss)) + 
+  geom_point(size = log(ContaAno$freq), alpha = 0.4, color = "darkblue") + 
+  xlab("ano") + 
+  ylab("sucesso") + 
+  xlim(1926,2010)+
+  theme_bw()+
+  scale_size_manual(values = log(ContaAno$freq))
 ```
 
 ***Qual o crescimento da duração das faixas ao longo dos anos? consegue existir alguma relação com o sucesso?***
 
-Dado o tamanho do banco de dados, tentei criar categorias de duraçoes com ranges que variariam em um minuto (2:00 ate 2:30, por exemplo). Cada uma dessas categorias seria representada por uma linha com uma cor distinta. No eixo x está o ano e no Y o sucesso da faixa.
-O problema foi eu nao consegui dividir em categorias de tempo, tornando o grafico impossivel de se entender ou de pelo menos enxergar alguma tendencia. 
+Dado o tamanho do banco de dados, dividi o conjunto de dados em dez grupos-categorias de duraçoes com ranges que variariam de cinco em cinco minuto (5:00 ate 10:00, por exemplo). Cada uma dessas categorias é representada por uma linha com uma cor distinta. No eixo x está o ano e no Y o sucesso da faixa.
+Abaixo vizualizamos todas os grupos juntos:
 
 ```{r, echo=FALSE}
-dur = duracao$duration
+duracao = dbGetQuery( con,'select duration, year, artist_hotttnesss from songs' )
+dur = cut(duracao$duration,10,labels=c("0~5 min", "5~10 min", "10~15 min", "15~20 min", "20~25 min", "25~30 min", "30~35 min", "35~40 min", "40~45 min", "45~50 min"))
 ano = duracao$year
 hot = duracao$artist_hotttnesss
-certo = aggregate(dur ~ ano + hot, data = duracao, median)
-ggplot(data=certo, aes(x=ano , y=hot , group=dur, color=dur))+ xlim(1926, 2010) + ylim(0, 1)+geom_line()
+certo = aggregate(hot ~ ano + dur, data = duracao, median)
+ggplot(certo, aes(x=ano, y=hot)) + 
+  xlim(1926, 2010) + 
+  ylim(0, 0.6) + 
+  geom_line(aes(colour = dur))
 ```
+
+O grafico acima dificulta a visualizaçao, principalmente a partir dos anos 60, devido a grande sobreposição de linhas. Mas atravez dele é facil perceber que nem todas as duraçoes de faixas existiam desde 1920 (quando o banco de dados inicia), por exemplo, é facil perceber antes dos anos 60 so existiam faixas menores que 10min.
+Abaixo dividi individualmente as faixas por categoria de duraçao:
+```{r, echo=FALSE}
+ggplot(certo, aes(x=ano, y=hot)) + xlim(1926, 2010) + ylim(0, 0.6) + geom_line(aes(colour = dur))+facet_grid(.~ dur)
+
+
+```
+Tendo em vista os graficos acima, podemos aferir pela visualizaçao uma media de sucesso maior (hotttnesss acima de 0.4) para as faixas superiores a 10 minutos, embora essa a linha de sucesso varie muito de ano para ano (mais notorio de 25~30 min e 30~35 min). 
+Do ponto de vista de tendencia, podemos ver um aumento continuo do sucesso das faixas menores que 10 minutos ao longo dos anos. O oposto ocorre nas faixas entre 10~40 min. A tendencia aponta um decrescimo gradual do sucesso. 
